@@ -21,13 +21,30 @@ jobs:
       - name: Install dependencies into build dir
         run: |
           mkdir -p build
-          pip install -r requirements.txt -t build
-          cp -r *.py build/
+          pip install --no-cache-dir --no-compile -r requirements.txt -t build
+          cp *.py build/
+          # Remove unnecessary files to reduce package size
+          cd build
+          find . -type d -name "tests" -exec rm -rf {} +
+          find . -type d -name "__pycache__" -exec rm -rf {} +
+          find . -type f -name "*.pyc" -delete
+          find . -type f -name "*.pyo" -delete
+          find . -type d -name "*.dist-info" -exec rm -rf {} +
+          find . -type d -name "*.egg-info" -exec rm -rf {} +
 
       - name: Create ZIP package
         run: |
           cd build
-          zip -r ../app.zip .
+          zip -r9 ../app.zip .
+
+      - name: Check package size
+        run: |
+          SIZE=$(du -h app.zip | cut -f1)
+          SIZE_BYTES=$(stat -c%s app.zip)
+          echo "Package size: $SIZE ($SIZE_BYTES bytes)"
+          if [ $SIZE_BYTES -gt 52428800 ]; then
+            echo "::warning::Package size exceeds 50MB. Consider using Lambda layers or S3."
+          fi
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -37,7 +54,16 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Deploy to Lambda
+        env:
+          FUNCTION_NAME: ${{ secrets.LAMBDA_FUNCTION_NAME || 'ai_test' }}
         run: |
+          echo "Deploying to Lambda function: $FUNCTION_NAME"
           aws lambda update-function-code \
-            --function-name ai_test \
+            --function-name "$FUNCTION_NAME" \
             --zip-file fileb://app.zip
+
+          echo "Waiting for function update to complete..."
+          aws lambda wait function-updated \
+            --function-name "$FUNCTION_NAME"
+
+          echo "Deployment completed successfully!"
