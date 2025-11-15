@@ -1,30 +1,23 @@
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-
-from openai_connection import model
-
-text = """Tell me a joke about {topic}."""
-
-prompt = ChatPromptTemplate.from_template(text)
-
-parser = StrOutputParser()
+from langchain_openai import ChatOpenAI
 
 
 class JokeChain:
-    def __init__(self, model, prompt, parser):
-        self.model = model
-        self.prompt = prompt
-        self.parser = parser
+    def __init__(self, model_name: str, temperature: float, openai_api_key: str):
+        self.model = ChatOpenAI(
+            model=model_name,
+            temperature=temperature,
+            api_key=openai_api_key
+        )
+        self.prompt = ChatPromptTemplate.from_template(
+            "Tell me a joke about {topic}."
+        )
+        self.parser = StrOutputParser()
 
     @property
     def chain(self):
         return self.prompt | self.model | self.parser
 
-    def run(self, topic):
+    def generate_joke(self, topic: str) -> str:
         return self.chain.invoke({"topic": topic})
-
-
-if __name__ == "__main__":
-    joke_chain = JokeChain(model, prompt, parser)
-    joke = joke_chain.run("computers")
-    print(joke)
