@@ -13,24 +13,27 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
-
-      - name: Install dependencies into build dir
+      - name: Install dependencies in Lambda-compatible environment
         run: |
           mkdir -p build
-          pip install --no-cache-dir --no-compile -r requirements.txt -t build
+          # Use Docker with Amazon Linux 2 (same as Lambda runtime) to install dependencies
+          docker run --rm \
+            -v $(pwd):/workspace \
+            -w /workspace \
+            public.ecr.aws/lambda/python:3.10 \
+            bash -c "pip install --no-cache-dir --no-compile -r requirements.txt -t build"
+
+          # Copy Python files
           cp *.py build/
+
           # Remove unnecessary files to reduce package size
           cd build
-          find . -type d -name "tests" -exec rm -rf {} +
-          find . -type d -name "__pycache__" -exec rm -rf {} +
-          find . -type f -name "*.pyc" -delete
-          find . -type f -name "*.pyo" -delete
-          find . -type d -name "*.dist-info" -exec rm -rf {} +
-          find . -type d -name "*.egg-info" -exec rm -rf {} +
+          find . -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true
+          find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+          find . -type f -name "*.pyc" -delete 2>/dev/null || true
+          find . -type f -name "*.pyo" -delete 2>/dev/null || true
+          find . -type d -name "*.dist-info" -exec rm -rf {} + 2>/dev/null || true
+          find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
 
       - name: Create ZIP package
         run: |
