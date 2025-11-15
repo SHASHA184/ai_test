@@ -22,7 +22,7 @@ jobs:
             -w /workspace \
             --entrypoint /bin/bash \
             public.ecr.aws/lambda/python:3.10 \
-            -c "pip install --no-cache-dir --no-compile -r requirements.txt -t build"
+            -c "pip install --upgrade pip && pip install --no-cache-dir --no-compile --only-binary=:all: -r requirements.txt -t build"
 
           # Copy Python files
           cp *.py build/
