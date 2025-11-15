@@ -7,7 +7,7 @@ from mangum import Mangum
 app = FastAPI()
 joke_chain = JokeChain(
     model_name=settings.llm_model_name,
-    temperature=settings.llm_temperature,,
+    temperature=settings.llm_temperature,
     openai_api_key=settings.openai_api_key,
 )
 
